@@ -19,9 +19,7 @@ venv.bak/
 # Ignore all JSON files inside app/ and its subdirectories
 app/**/*.json
 
-# Allow JSON files outside app/
-!*.json
-!*/**/*.json
+
 
 
 # IDEs and editors
