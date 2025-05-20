@@ -1,0 +1,41 @@
+%-----------PROJECTS-----------
+\section{Projects}
+\resumeSubHeadingListStart
+
+\resumeProjectHeading
+{\textbf{Digieye (Android App for the Visually Impaired)}
+$|$ \emph{Kotlin, Android, Python, FastAPI, Vertex AI, GCP}}{}
+\resumeItemListStart
+    \resumeItem{}{
+        Engineered a Visual Question Answering (VQA) Android application in Kotlin, enabling visually impaired users to query images using voice; integrated with a Python FastAPI backend connected to Google Vertex AI.
+    }
+    \resumeItem{}{
+        Implemented image capture, secure POST requests with compressed images, and text-to-speech functionality for AI-generated answers, achieving 90\% average response accuracy in real-world testing.
+    }
+\resumeItemListEnd
+
+\resumeProjectHeading
+{\textbf{Multi‑Tier Elastic Face Recognition Application}
+$|$ \emph{Python, AWS (EC2, SQS, S3, Auto Scaling), Docker, Deep Learning}}{}
+\resumeItemListStart
+    \resumeItem{}{
+        Architected a three‑tier distributed system on AWS; App Tier dynamically scaled from 0-20 EC2 instances based on SQS queue length, processing 100 concurrent requests in under 80 seconds.
+    }
+    \resumeItem{}{
+        Optimized cold-start times by 60\% using pre-baked AMIs with a ResNet-34 model; utilized S3 for durable I/O storage, enabling fault-tolerant, message-driven communication between tiers.
+    }
+\resumeItemListEnd
+
+\resumeProjectHeading
+{\textbf{Video Reconstruction from Randomized Frames} % Kept title from your example for consistency
+$|$ \emph{Python, OpenCV, NumPy, SciPy, SIFT, ORB}}{}
+\resumeItemListStart
+    \resumeItem{}{
+        Developed a preprocessing pipeline to downsample and grayscale shuffled video frames, reducing computational load while preserving feature integrity for accurate keypoint extraction.
+    }
+    \resumeItem{}{
+        Extracted/matched keypoints using ORB/SIFT, built a transition cost matrix, and implemented a greedy TSP solver to reorder frames, outperforming heuristic methods on a custom "Sequential Error" metric.
+    }
+\resumeItemListEnd
+
+

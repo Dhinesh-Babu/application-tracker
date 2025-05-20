@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from typing import List
 from datetime import date, datetime
+from fastapi.middleware.cors import CORSMiddleware
 
 
 from bson import ObjectId
@@ -8,7 +9,13 @@ from models import JobIn, JobOut, JobUpdate
 from db import jobs_collection
 
 app = FastAPI()
-
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+)
 
 @app.get("/")
 def read_root():
