@@ -16,7 +16,13 @@ venv.bak/
 *.sqlite3
 
 # Pydantic
-*.json
+# Ignore all JSON files inside app/ and its subdirectories
+app/**/*.json
+
+# Allow JSON files outside app/
+!*.json
+!*/**/*.json
+
 
 # IDEs and editors
 .vscode/
