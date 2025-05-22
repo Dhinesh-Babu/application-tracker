@@ -1,0 +1,42 @@
+# app/.dockerignore
+
+# Python virtual environment (if you use one locally)
+venv/
+.venv/
+env/
+.env/
+
+# Python compiled bytecode
+__pycache__/
+*.pyc
+*.pyd
+*.pyo
+
+# Python packaging and distribution
+.eggs/
+*.egg-info/
+build/
+dist/
+
+# Local development files and configurations (sensitive info)
+.env
+.env.*.local
+
+# Editor and IDE configurations
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Git files
+.git
+.gitignore
+
+# Logs and temporary files
+*.log
+logs/
+tmp/
+
+# OS generated files
+.DS_Store
+Thumbs.db
