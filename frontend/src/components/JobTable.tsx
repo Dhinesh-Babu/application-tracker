@@ -30,6 +30,16 @@ export default function JobTable() {
             })
     }, [])
 
+    const toggleDescription = (jobId: string) => {
+        const newExpanded = new Set(expandedDescriptions)
+        if (newExpanded.has(jobId)) {
+            newExpanded.delete(jobId)
+        } else {
+            newExpanded.add(jobId)
+        }
+        setExpandedDescriptions(newExpanded)
+    }
+
     if (loading) return <p>Loading jobs...</p>
 
     const handleDelete = async (id: string) => {
@@ -46,14 +56,15 @@ export default function JobTable() {
         setSelectedJobForInterview(job)
     }
 
-    const toggleDescription = (jobId: string) => {
-        const newExpanded = new Set(expandedDescriptions)
-        if (newExpanded.has(jobId)) {
-            newExpanded.delete(jobId)
-        } else {
-            newExpanded.add(jobId)
-        }
-        setExpandedDescriptions(newExpanded)
+    const formatDate = (dateString: string) => {
+        // Parse date as local date to avoid timezone issues
+        const [year, month, day] = dateString.split('-')
+        const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+        return date.toLocaleDateString('en-US', { 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric' 
+        })
     }
 
     const truncateText = (text: string, maxLength: number) => {
@@ -182,7 +193,7 @@ export default function JobTable() {
                                         </td>
                                         <td style={{ verticalAlign: "top" }}>
                                             <div style={{ color: "#374151" }}>
-                                                {new Date(job.date_applied).toLocaleDateString()}
+                                                {formatDate(job.date_applied)}
                                             </div>
                                         </td>
                                         <td style={{ verticalAlign: "top" }}>

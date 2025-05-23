@@ -13,12 +13,21 @@ interface Props {
 }
 
 export default function AddJobForm({ onJobAdded }: Props) {
+
+  const getLocalDateString = () => {
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const day = String(now.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
   const [formData, setFormData] = useState<JobFormData>({
     title: "",
     company: "",
     url: "",
     status: "Applied",
-    date_applied: new Date().toISOString().split("T")[0],
+    date_applied: getLocalDateString(),
   })
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
