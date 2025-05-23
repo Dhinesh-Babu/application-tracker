@@ -9,3 +9,4 @@ client = AsyncIOMotorClient(MONGO_URI)
 # Select your database and collection
 db = client["job_tracker"]             # database name
 jobs_collection = db["jobs"]           # collection for storing jobs
+interview_sessions_collection = db["interview_sessions"]

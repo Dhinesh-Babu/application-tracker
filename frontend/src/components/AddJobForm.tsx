@@ -3,7 +3,6 @@ import { useState } from "react"
 interface JobFormData {
   title: string
   company: string
-  description: string
   url: string
   status: string
   date_applied: string
@@ -17,13 +16,12 @@ export default function AddJobForm({ onJobAdded }: Props) {
   const [formData, setFormData] = useState<JobFormData>({
     title: "",
     company: "",
-    description: "",
     url: "",
     status: "Applied",
     date_applied: new Date().toISOString().split("T")[0],
   })
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
   }
@@ -37,24 +35,183 @@ export default function AddJobForm({ onJobAdded }: Props) {
       body: JSON.stringify(formData)
     })
 
-    setFormData({ ...formData, title: "", company: "", description: "", url: "" })
-    onJobAdded()  // notify parent to reload job list
+    setFormData({ 
+      title: "", 
+      company: "", 
+      url: "",
+      status: "Applied",
+      date_applied: new Date().toISOString().split("T")[0]
+    })
+    onJobAdded()
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ marginBottom: "2rem" }}>
-      <h2>Add a Job</h2>
-      <input name="title" placeholder="Title" value={formData.title} onChange={handleChange} required />
-      <input name="company" placeholder="Company" value={formData.company} onChange={handleChange} required />
-      <input name="url" placeholder="URL" value={formData.url} onChange={handleChange} required />
-      <textarea name="description" placeholder="Description" value={formData.description} onChange={handleChange} />
-      <select name="status" value={formData.status} onChange={handleChange}>
-        <option value="Applied">Applied</option>
-        <option value="Interview">Interview</option>
-        <option value="Rejected">Rejected</option>
-      </select>
-      <input name="date_applied" type="date" value={formData.date_applied} onChange={handleChange} required />
-      <button type="submit">Add Job</button>
-    </form>
+    <div style={{ 
+      backgroundColor: "white", 
+      padding: "2rem", 
+      borderRadius: "12px", 
+      border: "1px solid #e5e7eb",
+      marginBottom: "2rem",
+      boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)"
+    }}>
+      <h2 style={{ marginBottom: "1.5rem", color: "#111827" }}>Add New Job Application</h2>
+      
+      <form onSubmit={handleSubmit}>
+        <div style={{ marginBottom: "1rem" }}>
+          <label style={{ 
+            display: "block", 
+            marginBottom: "0.5rem", 
+            fontWeight: "500",
+            color: "#374151"
+          }}>
+            Job URL *
+          </label>
+          <input 
+            name="url" 
+            placeholder="https://company.com/jobs/..." 
+            value={formData.url} 
+            onChange={handleChange} 
+            required
+            style={{
+              width: "100%",
+              padding: "0.75rem",
+              border: "1px solid #d1d5db",
+              borderRadius: "6px",
+              fontSize: "1rem"
+            }}
+          />
+          <p style={{ 
+            color: "#6b7280", 
+            fontSize: "0.875rem", 
+            marginTop: "0.5rem" 
+          }}>
+            💡 Job description will be automatically generated from this URL
+          </p>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+          <div>
+            <label style={{ 
+              display: "block", 
+              marginBottom: "0.5rem", 
+              fontWeight: "500",
+              color: "#374151"
+            }}>
+              Job Title *
+            </label>
+            <input 
+              name="title" 
+              placeholder="Software Engineer" 
+              value={formData.title} 
+              onChange={handleChange} 
+              required
+              style={{
+                width: "100%",
+                padding: "0.75rem",
+                border: "1px solid #d1d5db",
+                borderRadius: "6px",
+                fontSize: "1rem"
+              }}
+            />
+          </div>
+          
+          <div>
+            <label style={{ 
+              display: "block", 
+              marginBottom: "0.5rem", 
+              fontWeight: "500",
+              color: "#374151"
+            }}>
+              Company *
+            </label>
+            <input 
+              name="company" 
+              placeholder="Company Name" 
+              value={formData.company} 
+              onChange={handleChange} 
+              required
+              style={{
+                width: "100%",
+                padding: "0.75rem",
+                border: "1px solid #d1d5db",
+                borderRadius: "6px",
+                fontSize: "1rem"
+              }}
+            />
+          </div>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1.5rem" }}>
+          <div>
+            <label style={{ 
+              display: "block", 
+              marginBottom: "0.5rem", 
+              fontWeight: "500",
+              color: "#374151"
+            }}>
+              Status
+            </label>
+            <select 
+              name="status" 
+              value={formData.status} 
+              onChange={handleChange}
+              style={{
+                width: "100%",
+                padding: "0.75rem",
+                border: "1px solid #d1d5db",
+                borderRadius: "6px",
+                fontSize: "1rem"
+              }}
+            >
+              <option value="Applied">Applied</option>
+              <option value="Interview">Interview</option>
+              <option value="Rejected">Rejected</option>
+            </select>
+          </div>
+          
+          <div>
+            <label style={{ 
+              display: "block", 
+              marginBottom: "0.5rem", 
+              fontWeight: "500",
+              color: "#374151"
+            }}>
+              Date Applied *
+            </label>
+            <input 
+              name="date_applied" 
+              type="date" 
+              value={formData.date_applied} 
+              onChange={handleChange} 
+              required
+              style={{
+                width: "100%",
+                padding: "0.75rem",
+                border: "1px solid #d1d5db",
+                borderRadius: "6px",
+                fontSize: "1rem"
+              }}
+            />
+          </div>
+        </div>
+
+        <button 
+          type="submit"
+          style={{
+            backgroundColor: "#3b82f6",
+            color: "white",
+            padding: "0.75rem 2rem",
+            border: "none",
+            borderRadius: "8px",
+            fontSize: "1rem",
+            fontWeight: "600",
+            cursor: "pointer",
+            boxShadow: "0 2px 4px rgba(59, 130, 246, 0.2)"
+          }}
+        >
+          ✅ Add Job Application
+        </button>
+      </form>
+    </div>
   )
 }
