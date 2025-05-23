@@ -4,7 +4,7 @@ version: '3.8'
 services:
   # --- MongoDB Database Service ---
   mongodb:
-    image: mongo:latest # Use the latest stable MongoDB image
+    image: mongo:6.0 # Use a specific stable MongoDB version for reproducible builds
     ports:
       - "27017:27017" # Map host port 27017 to container port 27017
     volumes:
