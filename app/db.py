@@ -20,15 +20,15 @@ jobs_collection = db["jobs"]
 # Optional: Add a function to close the MongoDB connection when the app shuts down
 # This is good practice for FastAPI applications.
 async def connect_to_mongo():
-    print(f"Connecting to MongoDB at: {MONGO_URI}")
+    logging.info(f"Connecting to MongoDB at: {MONGO_URI}")
     try:
         await client.admin.command('ping') # Test connection
-        print("MongoDB connection successful!")
+        logging.info("MongoDB connection successful!")
     except Exception as e:
-        print(f"MongoDB connection failed: {e}")
+        logging.error(f"MongoDB connection failed: {e}")
         # Depending on your app, you might want to exit or retry here
 
 async def close_mongo_connection():
-    print("Closing MongoDB connection...")
+    logging.info("Closing MongoDB connection...")
     client.close()
-    print("MongoDB connection closed.")
+    logging.info("MongoDB connection closed.")
