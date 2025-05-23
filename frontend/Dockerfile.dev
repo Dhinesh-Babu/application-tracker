@@ -1,0 +1,21 @@
+# --- Development Stage ---
+FROM node:20-alpine AS development
+
+# Set working directory
+WORKDIR /app
+
+# Copy package.json and package-lock.json
+COPY package.json package-lock.json ./
+
+# Install dependencies
+RUN npm install --loglevel verbose
+
+# No need to copy the rest of the code here, as we'll mount it via Docker volume
+
+# Expose the development server port (Vite's default is 5173)
+EXPOSE 5173
+
+# Command to start the development server
+# --host ensures Vite listens on all network interfaces inside the container,
+# making it accessible from your host machine.
+CMD ["npm", "run", "dev", "--", "--host"]

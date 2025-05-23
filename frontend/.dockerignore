@@ -1,0 +1,33 @@
+# frontend/.dockerignore
+
+# Node modules - installed inside the container during build
+node_modules
+
+# Build outputs - generated inside the container during build
+dist
+build
+out
+
+# Local development files and configurations (often contain sensitive info)
+.env
+.env.*.local
+.vite # Vite's cache directory
+
+# Editor and IDE configurations
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Git files - handled by the root .dockerignore or simply not needed here
+.git
+.gitignore
+
+# Logs and temporary files
+*.log
+logs/
+tmp/
+
+# OS generated files
+.DS_Store
+Thumbs.db

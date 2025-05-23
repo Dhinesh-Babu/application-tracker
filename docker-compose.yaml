@@ -1,0 +1,62 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  # --- MongoDB Database Service ---
+  mongodb:
+    image: mongo:6.0 # Use a specific stable MongoDB version for reproducible builds
+    ports:
+      - "27017:27017" # Map host port 27017 to container port 27017
+    volumes:
+      # Persist MongoDB data to a named volume on the host.
+      # This means your data will survive if you stop/start/recreate the container.
+      - mongo_data:/data/db
+    environment:
+      # Optional: Set MongoDB root user credentials for development
+      # In production, use more secure methods for credentials.
+      MONGO_INITDB_ROOT_USERNAME: user
+      MONGO_INITDB_ROOT_PASSWORD: password
+    restart: unless-stopped # Always restart unless explicitly stopped
+  # --- FastAPI Backend Service ---
+  backend:
+    build:
+      context: ./app
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/app
+    environment:
+      # This is the crucial environment variable for your FastAPI app
+      DATABASE_URL: mongodb://user:password@mongodb:27017/job_tracker?authSource=admin
+      # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      # 'mongodb' is the service name of your MongoDB container
+      # 'user' and 'password' match the MONGO_INITDB_ROOT_USERNAME/PASSWORD in the mongodb service
+      # 'job_tracker' is your database name
+      # '?authSource=admin' is needed when authenticating with root user against a specific db
+    depends_on:
+      - mongodb
+    restart: unless-stopped
+  # --- React/Vite Frontend Service ---
+  frontend:
+    build:
+      context: ./frontend  # Build context is the 'frontend' directory
+      dockerfile: Dockerfile.dev # Use the development Dockerfile for React/Vite
+    ports:
+      - "5173:5173"        # Map host port 5173 to container port 5173
+    volumes:
+      - ./frontend:/app    # Mount local 'frontend' directory for hot-reloading
+      - /app/node_modules  # Crucial: Prevent host node_modules from conflicting
+    environment:
+      # Frontend environment variables must be VITE_ prefixed for Vite to expose them
+      VITE_API_BASE_URL: http://localhost:8000 # For direct host access (e.g., via browser)
+      VITE_DOCKER_API_BASE_URL: http://backend:8000 # For container-to-container communication
+      CHOKIDAR_USEPOLLING: "true" # For hot-reloading stability on some systems
+    depends_on:
+      - backend            # Frontend depends on backend (optional but good practice for order)
+    restart: unless-stopped
+
+# Named volumes for persistent data
+volumes:
+  mongo_data:
+    driver: local
