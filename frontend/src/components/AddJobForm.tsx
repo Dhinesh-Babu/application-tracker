@@ -1,11 +1,38 @@
-import { useState } from "react"
+// frontend/src/components/AddJobForm.tsx - Complete Modern Mantine UI
+
+import { useState } from 'react'
+import { 
+  TextInput, 
+  Select, 
+  Button, 
+  Stack, 
+  Group, 
+  Text,
+  Title,
+  Alert,
+  Box
+} from '@mantine/core'
+import { DateInput } from '@mantine/dates'
+import { useForm } from '@mantine/form'
+import { notifications } from '@mantine/notifications'
+import { 
+  IconBriefcase, 
+  IconBuilding, 
+  IconLink, 
+  IconCalendar,
+  IconPlus,
+  IconCheck,
+  IconX,
+  IconSparkles,
+  IconInfoCircle
+} from '@tabler/icons-react'
 
 interface JobFormData {
   title: string
   company: string
   url: string
   status: string
-  date_applied: string
+  date_applied: Date | null
 }
 
 interface Props {
@@ -13,214 +40,209 @@ interface Props {
 }
 
 export default function AddJobForm({ onJobAdded }: Props) {
+  const [submitting, setSubmitting] = useState(false)
 
-  const getLocalDateString = () => {
-    const now = new Date()
-    const year = now.getFullYear()
-    const month = String(now.getMonth() + 1).padStart(2, '0')
-    const day = String(now.getDate()).padStart(2, '0')
-    return `${year}-${month}-${day}`
-  }
-
-  const [formData, setFormData] = useState<JobFormData>({
-    title: "",
-    company: "",
-    url: "",
-    status: "Applied",
-    date_applied: getLocalDateString(),
+  const form = useForm<JobFormData>({
+    initialValues: {
+      title: '',
+      company: '',
+      url: '',
+      status: 'Applied',
+      date_applied: new Date(),
+    },
+    validate: {
+      title: (value: string) => (!value ? 'Job title is required' : null),
+      company: (value: string) => (!value ? 'Company name is required' : null),
+      url: (value: string) => {
+        if (!value) return 'Job URL is required'
+        try {
+          new URL(value)
+          return null
+        } catch {
+          return 'Please enter a valid URL'
+        }
+      },
+      date_applied: (value: Date | null) => (!value ? 'Date applied is required' : null),
+    },
   })
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
-  }
+  const handleSubmit = async (values: JobFormData) => {
+    setSubmitting(true)
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    try {
+      const response = await fetch('http://localhost:8000/jobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...values,
+          date_applied: values.date_applied?.toISOString().split('T')[0],
+        }),
+      })
 
-    await fetch("http://localhost:8000/jobs", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(formData)
-    })
+      if (!response.ok) {
+        throw new Error('Failed to add job')
+      }
 
-    setFormData({ 
-      title: "", 
-      company: "", 
-      url: "",
-      status: "Applied",
-      date_applied: new Date().toISOString().split("T")[0]
-    })
-    onJobAdded()
+      form.reset()
+      form.setFieldValue('date_applied', new Date())
+      onJobAdded()
+
+      notifications.show({
+        title: 'Job Added Successfully! 🎉',
+        message: 'Your job application has been saved and description generated',
+        color: 'green',
+        icon: <IconCheck size={16} />,
+      })
+    } catch (error) {
+      notifications.show({
+        title: 'Failed to Add Job',
+        message: 'Please check your connection and try again',
+        color: 'red',
+        icon: <IconX size={16} />,
+      })
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
-    <div style={{ 
-      backgroundColor: "white", 
-      padding: "2rem", 
-      borderRadius: "12px", 
-      border: "1px solid #e5e7eb",
-      marginBottom: "2rem",
-      boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)"
-    }}>
-      <h2 style={{ marginBottom: "1.5rem", color: "#111827" }}>Add New Job Application</h2>
-      
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: "1rem" }}>
-          <label style={{ 
-            display: "block", 
-            marginBottom: "0.5rem", 
-            fontWeight: "500",
-            color: "#374151"
-          }}>
-            Job URL *
-          </label>
-          <input 
-            name="url" 
-            placeholder="https://company.com/jobs/..." 
-            value={formData.url} 
-            onChange={handleChange} 
-            required
+    <Stack gap="md">
+      <Group justify="space-between" align="center">
+        <Title order={3} c="dark.7">✨ Add New Application</Title>
+      </Group>
+
+      <Alert 
+        icon={<IconSparkles size={16} />} 
+        color="blue" 
+        variant="light"
+        styles={{
+          root: {
+            backgroundColor: 'var(--mantine-color-blue-0)',
+            border: '1px solid var(--mantine-color-blue-3)',
+          },
+        }}
+      >
+        <Text size="sm" c="blue.8">
+          🤖 AI will automatically generate a detailed job description from the URL you provide
+        </Text>
+      </Alert>
+
+      <form onSubmit={form.onSubmit(handleSubmit)}>
+        <Stack gap="md">
+          {/* Job URL - Primary Field */}
+          <Box 
+            p="md"
             style={{
-              width: "100%",
-              padding: "0.75rem",
-              border: "1px solid #d1d5db",
-              borderRadius: "6px",
-              fontSize: "1rem"
+              backgroundColor: 'var(--mantine-color-blue-0)',
+              borderRadius: 'var(--mantine-radius-md)',
+              border: '1px solid var(--mantine-color-blue-2)',
             }}
-          />
-          <p style={{ 
-            color: "#6b7280", 
-            fontSize: "0.875rem", 
-            marginTop: "0.5rem" 
-          }}>
-            💡 Job description will be automatically generated from this URL
-          </p>
-        </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
-          <div>
-            <label style={{ 
-              display: "block", 
-              marginBottom: "0.5rem", 
-              fontWeight: "500",
-              color: "#374151"
-            }}>
-              Job Title *
-            </label>
-            <input 
-              name="title" 
-              placeholder="Software Engineer" 
-              value={formData.title} 
-              onChange={handleChange} 
+          >
+            <TextInput
+              label="Job URL"
+              placeholder="https://company.com/careers/job-posting"
+              leftSection={<IconLink size={16} />}
               required
-              style={{
-                width: "100%",
-                padding: "0.75rem",
-                border: "1px solid #d1d5db",
-                borderRadius: "6px",
-                fontSize: "1rem"
+              {...form.getInputProps('url')}
+              styles={{
+                label: { fontWeight: 600, color: 'var(--mantine-color-blue-8)' },
+                input: { 
+                  backgroundColor: 'white',
+                  border: '1px solid var(--mantine-color-blue-3)',
+                  '&:focus': {
+                    borderColor: 'var(--mantine-color-blue-5)',
+                  },
+                },
               }}
             />
-          </div>
-          
-          <div>
-            <label style={{ 
-              display: "block", 
-              marginBottom: "0.5rem", 
-              fontWeight: "500",
-              color: "#374151"
-            }}>
-              Company *
-            </label>
-            <input 
-              name="company" 
-              placeholder="Company Name" 
-              value={formData.company} 
-              onChange={handleChange} 
+            <Text size="xs" c="blue.7" mt={4}>
+              💡 Paste the job posting URL - we'll extract all the details automatically
+            </Text>
+          </Box>
+
+          {/* Basic Info Grid */}
+          <Group grow>
+            <TextInput
+              label="Job Title"
+              placeholder="Software Engineer"
+              leftSection={<IconBriefcase size={16} />}
               required
-              style={{
-                width: "100%",
-                padding: "0.75rem",
-                border: "1px solid #d1d5db",
-                borderRadius: "6px",
-                fontSize: "1rem"
+              {...form.getInputProps('title')}
+              styles={{
+                label: { fontWeight: 500 },
+                input: { 
+                  '&:focus': { borderColor: 'var(--mantine-color-blue-5)' }
+                },
               }}
             />
-          </div>
-        </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1.5rem" }}>
-          <div>
-            <label style={{ 
-              display: "block", 
-              marginBottom: "0.5rem", 
-              fontWeight: "500",
-              color: "#374151"
-            }}>
-              Status
-            </label>
-            <select 
-              name="status" 
-              value={formData.status} 
-              onChange={handleChange}
-              style={{
-                width: "100%",
-                padding: "0.75rem",
-                border: "1px solid #d1d5db",
-                borderRadius: "6px",
-                fontSize: "1rem"
-              }}
-            >
-              <option value="Applied">Applied</option>
-              <option value="Interview">Interview</option>
-              <option value="Rejected">Rejected</option>
-            </select>
-          </div>
-          
-          <div>
-            <label style={{ 
-              display: "block", 
-              marginBottom: "0.5rem", 
-              fontWeight: "500",
-              color: "#374151"
-            }}>
-              Date Applied *
-            </label>
-            <input 
-              name="date_applied" 
-              type="date" 
-              value={formData.date_applied} 
-              onChange={handleChange} 
+            <TextInput
+              label="Company"
+              placeholder="Amazing Tech Co."
+              leftSection={<IconBuilding size={16} />}
               required
-              style={{
-                width: "100%",
-                padding: "0.75rem",
-                border: "1px solid #d1d5db",
-                borderRadius: "6px",
-                fontSize: "1rem"
+              {...form.getInputProps('company')}
+              styles={{
+                label: { fontWeight: 500 },
+                input: { 
+                  '&:focus': { borderColor: 'var(--mantine-color-blue-5)' }
+                },
               }}
             />
-          </div>
-        </div>
+          </Group>
 
-        <button 
-          type="submit"
-          style={{
-            backgroundColor: "#3b82f6",
-            color: "white",
-            padding: "0.75rem 2rem",
-            border: "none",
-            borderRadius: "8px",
-            fontSize: "1rem",
-            fontWeight: "600",
-            cursor: "pointer",
-            boxShadow: "0 2px 4px rgba(59, 130, 246, 0.2)"
-          }}
-        >
-          ✅ Add Job Application
-        </button>
+          {/* Status and Date */}
+          <Group grow>
+            <Select
+              label="Application Status"
+              data={[
+                { value: 'Applied', label: '📝 Applied' },
+                { value: 'Interview', label: '🎯 Interview' },
+                { value: 'Rejected', label: '❌ Rejected' },
+              ]}
+              {...form.getInputProps('status')}
+              styles={{
+                label: { fontWeight: 500 },
+                input: { 
+                  '&:focus': { borderColor: 'var(--mantine-color-blue-5)' }
+                },
+              }}
+            />
+            <DateInput
+              label="Date Applied"
+              placeholder="Select date"
+              leftSection={<IconCalendar size={16} />}
+              required
+              {...form.getInputProps('date_applied')}
+              styles={{
+                label: { fontWeight: 500 },
+                input: { 
+                  '&:focus': { borderColor: 'var(--mantine-color-blue-5)' }
+                },
+              }}
+            />
+          </Group>
+
+          {/* Submit Button */}
+          <Button
+            type="submit"
+            loading={submitting}
+            leftSection={<IconPlus size={16} />}
+            size="md"
+            fullWidth
+            gradient={{ from: 'blue', to: 'purple', deg: 45 }}
+            styles={{
+              root: {
+                marginTop: 'var(--mantine-spacing-md)',
+                height: '50px',
+                fontSize: 'var(--mantine-fontsize-md)',
+                fontWeight: 600,
+              },
+            }}
+          >
+            {submitting ? 'Adding Application...' : 'Add Job Application'}
+          </Button>
+        </Stack>
       </form>
-    </div>
+    </Stack>
   )
 }
