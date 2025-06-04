@@ -1,4 +1,4 @@
-# app/main.py - Complete updated version with resume features
+# app/main.py - Updated with Jinja2 template support
 
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.responses import FileResponse, JSONResponse
@@ -25,12 +25,8 @@ import PyPDF2
 import io
 
 # PDF generation imports
-from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import inch
-from reportlab.lib import colors
-from reportlab.lib.enums import TA_LEFT, TA_CENTER
+import pdfkit
+from jinja2 import Environment, FileSystemLoader
 
 app = FastAPI()
 app.add_middleware(
@@ -55,11 +51,47 @@ resumes_collection = db["resumes"]
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
 
+# Create templates directory
+TEMPLATES_DIR = Path(__file__).parent / "templates"
+TEMPLATES_DIR.mkdir(exist_ok=True)
+
+# Initialize Jinja2 environment
+jinja_env = Environment(loader=FileSystemLoader(str(TEMPLATES_DIR)))
+
+# Available resume templates
+AVAILABLE_TEMPLATES = {
+    "modern": {
+        "name": "Modern Professional",
+        "description": "Clean, modern design with blue accents and two-column layout",
+        "template": "modern_resume.html"
+    },
+    "classic": {
+        "name": "Classic Traditional",
+        "description": "Traditional serif font layout, perfect for conservative industries",
+        "template": "classic_resume.html"
+    },
+    "creative": {
+        "name": "Creative Sidebar",
+        "description": "Eye-catching sidebar design with gradient background",
+        "template": "creative_resume.html"
+    },
+    "minimal": {
+        "name": "Minimal Clean",
+        "description": "Ultra-clean minimal design focusing on content",
+        "template": "minimal_resume.html"
+    }
+}
+
 @app.get("/")
 def read_root():
     return {"Hello": "World"}
 
 # Resume Management Endpoints
+
+@app.get("/resume/templates")
+async def get_available_templates():
+    """Get list of available resume templates"""
+    return {"templates": AVAILABLE_TEMPLATES}
 
 @app.post("/resume/upload", response_model=ResumeUploadResponse)
 async def upload_resume(file: UploadFile = File(...)):
@@ -158,16 +190,24 @@ async def customize_resume(request: ResumeCustomizationRequest):
         raise HTTPException(status_code=500, detail=f"Failed to customize resume: {str(e)}")
 
 @app.post("/resume/generate-pdf")
-async def generate_resume_pdf(request: ResumeCustomizationRequest):
-    """Generate a PDF version of the customized resume"""
+async def generate_resume_pdf(
+    job_id: str = Form(...),
+    sections_to_update: List[str] = Form(...),
+    template: str = Form(default="modern")
+):
+    """Generate a PDF version of the customized resume using selected template"""
     try:
+        # Validate template
+        if template not in AVAILABLE_TEMPLATES:
+            raise HTTPException(status_code=400, detail="Invalid template selected")
+        
         # Get current resume
         resume = await resumes_collection.find_one({"is_active": True})
         if not resume:
             raise HTTPException(status_code=404, detail="No active resume found")
         
         # Get job details
-        job = await jobs_collection.find_one({"_id": ObjectId(request.job_id)})
+        job = await jobs_collection.find_one({"_id": ObjectId(job_id)})
         if not job:
             raise HTTPException(status_code=404, detail="Job not found")
         
@@ -175,11 +215,16 @@ async def generate_resume_pdf(request: ResumeCustomizationRequest):
         customized_resume = await customize_resume_with_llm(
             resume["parsed_data"], 
             job["description"], 
-            request.sections_to_update
+            sections_to_update
         )
         
-        # Generate PDF
-        pdf_path = await create_resume_pdf(customized_resume, job["title"], job["company"])
+        # Generate PDF using Jinja template
+        pdf_path = await create_resume_pdf_from_template(
+            customized_resume, 
+            job["title"], 
+            job["company"],
+            template
+        )
         
         return FileResponse(
             pdf_path,
@@ -415,148 +460,55 @@ async def generate_summary_section(resume_data: dict, job_description: str) -> s
         print(f"Error generating summary: {str(e)}")
         return "Experienced professional with a strong background in technology and innovation."
 
-async def create_resume_pdf(resume_data: dict, job_title: str, company: str) -> str:
-    """Create a PDF resume from the structured data"""
-    # Create a temporary file
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
-        pdf_path = tmp_file.name
-    
-    # Create the PDF document
-    doc = SimpleDocTemplate(pdf_path, pagesize=letter, topMargin=0.5*inch)
-    styles = getSampleStyleSheet()
-    story = []
-    
-    # Custom styles
-    title_style = ParagraphStyle(
-        'CustomTitle',
-        parent=styles['Heading1'],
-        fontSize=24,
-        alignment=TA_CENTER,
-        spaceAfter=12
-    )
-    
-    heading_style = ParagraphStyle(
-        'CustomHeading',
-        parent=styles['Heading2'],
-        fontSize=14,
-        spaceAfter=6,
-        spaceBefore=12,
-        textColor=colors.HexColor('#1f2937')
-    )
-    
-    normal_style = ParagraphStyle(
-        'CustomNormal',
-        parent=styles['Normal'],
-        fontSize=10,
-        spaceAfter=6
-    )
-    
-    # Header
-    personal_info = resume_data.get('personal_info', {})
-    if personal_info.get('name'):
-        story.append(Paragraph(personal_info['name'], title_style))
+async def create_resume_pdf_from_template(resume_data: dict, job_title: str, company: str, template: str) -> str:
+    """Create a PDF resume using Jinja2 template"""
+    try:
+        # Get template info
+        template_info = AVAILABLE_TEMPLATES.get(template, AVAILABLE_TEMPLATES["modern"])
+        template_file = template_info["template"]
         
-        contact_info = []
-        if personal_info.get('email'):
-            contact_info.append(personal_info['email'])
-        if personal_info.get('phone'):
-            contact_info.append(personal_info['phone'])
-        if personal_info.get('location'):
-            contact_info.append(personal_info['location'])
+        # Load and render template
+        template = jinja_env.get_template(template_file)
+        html_content = template.render(**resume_data)
         
-        if contact_info:
-            story.append(Paragraph(' | '.join(contact_info), normal_style))
-    
-    story.append(Spacer(1, 0.2*inch))
-    
-    # Professional Summary
-    if resume_data.get('summary'):
-        story.append(Paragraph("PROFESSIONAL SUMMARY", heading_style))
-        story.append(Paragraph(resume_data['summary'], normal_style))
-        story.append(Spacer(1, 0.1*inch))
-    
-    # Technical Skills
-    skills = resume_data.get('skills', {})
-    if skills.get('technical_skills'):
-        story.append(Paragraph("TECHNICAL SKILLS", heading_style))
-        skills_text = ', '.join(skills['technical_skills'])
-        story.append(Paragraph(f"<b>Technical Skills:</b> {skills_text}", normal_style))
-        story.append(Spacer(1, 0.1*inch))
-    
-    # Professional Experience
-    experience = resume_data.get('experience', [])
-    if experience:
-        story.append(Paragraph("PROFESSIONAL EXPERIENCE", heading_style))
+        # Create temporary HTML file
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.html', delete=False, encoding='utf-8') as tmp_html:
+            tmp_html.write(html_content)
+            tmp_html_path = tmp_html.name
         
-        for exp in experience:
-            # Job title and company
-            title_line = f"<b>{exp['role']}</b> - {exp['company']}"
-            if exp.get('location'):
-                title_line += f" | {exp['location']}"
-            story.append(Paragraph(title_line, normal_style))
-            
-            # Duration
-            if exp.get('duration'):
-                story.append(Paragraph(f"<i>{exp['duration']}</i>", normal_style))
-            
-            # Responsibilities
-            for resp in exp.get('responsibilities', []):
-                story.append(Paragraph(f"• {resp}", normal_style))
-            
-            story.append(Spacer(1, 0.1*inch))
-    
-    # Projects
-    projects = resume_data.get('projects', [])
-    if projects:
-        story.append(Paragraph("PROJECTS", heading_style))
+        # Create temporary PDF file
+        tmp_pdf_path = tmp_html_path.replace('.html', '.pdf')
         
-        for project in projects:
-            project_title = f"<b>{project['name']}</b>"
-            if project.get('duration'):
-                project_title += f" | {project['duration']}"
-            story.append(Paragraph(project_title, normal_style))
-            
-            story.append(Paragraph(project['description'], normal_style))
-            
-            if project.get('technologies'):
-                tech_text = ', '.join(project['technologies'])
-                story.append(Paragraph(f"<b>Technologies:</b> {tech_text}", normal_style))
-            
-            story.append(Spacer(1, 0.1*inch))
-    
-    # Education
-    education = resume_data.get('education', [])
-    if education:
-        story.append(Paragraph("EDUCATION", heading_style))
+        # PDF generation options for better single-page formatting
+        options = {
+            'page-size': 'Letter',
+            'margin-top': '0.5in',
+            'margin-right': '0.5in',
+            'margin-bottom': '0.5in',
+            'margin-left': '0.5in',
+            'encoding': "UTF-8",
+            'no-outline': None,
+            'enable-local-file-access': None,
+            'print-media-type': None,
+            'disable-smart-shrinking': None,
+            'zoom': 0.95  # Slight zoom out to fit more content
+        }
         
-        for edu in education:
-            edu_line = f"<b>{edu['degree']}</b> - {edu['institution']}"
-            if edu.get('location'):
-                edu_line += f" | {edu['location']}"
-            story.append(Paragraph(edu_line, normal_style))
-            
-            if edu.get('duration'):
-                story.append(Paragraph(f"<i>{edu['duration']}</i>", normal_style))
-            
-            story.append(Spacer(1, 0.1*inch))
-    
-    # Certifications
-    certifications = resume_data.get('certifications', [])
-    if certifications:
-        story.append(Paragraph("CERTIFICATIONS", heading_style))
-        for cert in certifications:
-            story.append(Paragraph(f"• {cert}", normal_style))
-    
-    # Build PDF
-    doc.build(story)
-    return pdf_path
+        # Generate PDF
+        pdfkit.from_file(tmp_html_path, tmp_pdf_path, options=options)
+        
+        # Clean up temporary HTML file
+        os.unlink(tmp_html_path)
+        
+        return tmp_pdf_path
+        
+    except Exception as e:
+        print(f"Error creating PDF: {str(e)}")
+        raise e
 
-# Job Management Functions (existing)
-
+# Job Management Functions (existing - keeping the same)
 async def generate_job_description_from_url(url: str, title: str, company: str) -> str:
-    """
-    Use LLM to generate job description by analyzing the URL
-    """
+    """Use LLM to generate job description by analyzing the URL"""
     try:
         prompt = f"""
         Based on this job posting URL and the provided details, generate a comprehensive job description.
@@ -603,7 +555,7 @@ async def generate_job_description_from_url(url: str, title: str, company: str) 
         URL: {url}
         """
 
-# Job CRUD Endpoints
+# Job CRUD Endpoints (keeping existing endpoints...)
 
 @app.post("/jobs")
 async def create_job(job: JobIn):
@@ -756,7 +708,7 @@ async def partial_update_job(job_id: str, job: JobUpdate):
     result.pop("_id", None)
     return result
 
-# Interview Prep Endpoints
+# Interview Prep Endpoints (keeping existing...)
 
 @app.post("/interview/generate-questions", response_model=InterviewQuestionsResponse)
 async def generate_interview_questions(request: GenerateQuestionsRequest):

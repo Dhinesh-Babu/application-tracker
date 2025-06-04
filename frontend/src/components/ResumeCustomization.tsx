@@ -1,6 +1,6 @@
-// frontend/src/components/ResumeCustomization.tsx - Modern Mantine UI
+// frontend/src/components/ResumeCustomization.tsx - Updated with Template Selection
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { 
   Stack, 
   Group, 
@@ -18,7 +18,10 @@ import {
   Container,
   LoadingOverlay,
   ScrollArea,
-  List
+  List,
+  Select,
+  Image,
+  Radio
 } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import { 
@@ -32,7 +35,9 @@ import {
   IconRocket,
   IconCode,
   IconFileDescription,
-  IconCheck
+  IconCheck,
+  IconPalette,
+  IconEye
 } from '@tabler/icons-react'
 
 interface ParsedResumeData {
@@ -79,6 +84,12 @@ interface Job {
   description: string
 }
 
+interface Template {
+  name: string
+  description: string
+  template: string
+}
+
 interface Props {
   job: Job
   onClose: () => void
@@ -86,6 +97,8 @@ interface Props {
 
 export default function ResumeCustomization({ job, onClose }: Props) {
   const [selectedSections, setSelectedSections] = useState<string[]>(['skills', 'experience'])
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('modern')
+  const [templates, setTemplates] = useState<Record<string, Template>>({})
   const [customizing, setCustomizing] = useState(false)
   const [customizedResume, setCustomizedResume] = useState<ParsedResumeData | null>(null)
 
@@ -119,6 +132,40 @@ export default function ResumeCustomization({ job, onClose }: Props) {
       color: 'orange'
     }
   ]
+
+  // Template previews (base64 encoded small preview images could go here)
+  const templatePreviews = {
+    modern: {
+      gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      description: 'Clean, modern design with blue accents'
+    },
+    classic: {
+      gradient: 'linear-gradient(135deg, #000000 0%, #434343 100%)',
+      description: 'Traditional serif layout for conservative industries'
+    },
+    creative: {
+      gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
+      description: 'Eye-catching sidebar with gradient background'
+    },
+    minimal: {
+      gradient: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+      description: 'Ultra-clean minimal design focusing on content'
+    }
+  }
+
+  useEffect(() => {
+    fetchTemplates()
+  }, [])
+
+  const fetchTemplates = async () => {
+    try {
+      const response = await fetch('http://localhost:8000/resume/templates')
+      const data = await response.json()
+      setTemplates(data.templates)
+    } catch (err) {
+      console.error('Failed to fetch templates:', err)
+    }
+  }
 
   const handleSectionToggle = (sectionId: string) => {
     setSelectedSections(prev => 
@@ -180,15 +227,16 @@ export default function ResumeCustomization({ job, onClose }: Props) {
 
   const handleDownload = async () => {
     try {
+      const formData = new FormData()
+      formData.append('job_id', job.id)
+      formData.append('template', selectedTemplate)
+      selectedSections.forEach(section => {
+        formData.append('sections_to_update', section)
+      })
+
       const response = await fetch('http://localhost:8000/resume/generate-pdf', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          job_id: job.id,
-          sections_to_update: selectedSections
-        })
+        body: formData
       })
 
       if (!response.ok) {
@@ -238,9 +286,76 @@ export default function ResumeCustomization({ job, onClose }: Props) {
         {!customizedResume ? (
           <Stack gap="xl">
             <Alert icon={<IconSparkles size={16} />} color="blue" variant="light">
-              Select which sections to customize for this specific role. Our AI will optimize your content to match the job requirements.
+              Select which sections to customize and choose a template design. Our AI will optimize your content to match the job requirements.
             </Alert>
 
+            {/* Template Selection */}
+            <Box>
+              <Group mb="md">
+                <IconPalette size={20} color="var(--mantine-color-violet-6)" />
+                <Title order={4}>Choose Resume Template:</Title>
+              </Group>
+              <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="md">
+                {Object.entries(templates).map(([key, template]) => {
+                  const preview = templatePreviews[key as keyof typeof templatePreviews]
+                  return (
+                    <Card 
+                      key={key}
+                      withBorder 
+                      p="md"
+                      style={{ 
+                        cursor: 'pointer',
+                        backgroundColor: selectedTemplate === key ? 'var(--mantine-color-blue-0)' : 'transparent',
+                        borderColor: selectedTemplate === key ? 'var(--mantine-color-blue-5)' : 'var(--mantine-color-gray-3)',
+                        borderWidth: selectedTemplate === key ? '2px' : '1px',
+                      }}
+                      onClick={() => setSelectedTemplate(key)}
+                    >
+                      <Stack gap="sm">
+                        <Radio 
+                          checked={selectedTemplate === key}
+                          onChange={() => setSelectedTemplate(key)}
+                          label=""
+                          size="sm"
+                        />
+                        
+                        {/* Template Preview */}
+                        <Box
+                          h={80}
+                          style={{
+                            background: preview?.gradient || 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+                            borderRadius: 'var(--mantine-radius-sm)',
+                            border: '1px solid var(--mantine-color-gray-2)',
+                            position: 'relative',
+                            overflow: 'hidden'
+                          }}
+                        >
+                          {/* Mock content lines */}
+                          <Stack gap={2} p="xs">
+                            <Box h={8} bg="rgba(255,255,255,0.9)" w="80%" style={{ borderRadius: 2 }} />
+                            <Box h={4} bg="rgba(255,255,255,0.7)" w="60%" style={{ borderRadius: 1 }} />
+                            <Box h={4} bg="rgba(255,255,255,0.7)" w="40%" style={{ borderRadius: 1 }} />
+                            <Box h={2} bg="rgba(255,255,255,0.5)" w="90%" style={{ borderRadius: 1 }} />
+                            <Box h={2} bg="rgba(255,255,255,0.5)" w="85%" style={{ borderRadius: 1 }} />
+                          </Stack>
+                        </Box>
+                        
+                        <Stack gap={4}>
+                          <Text fw={600} size="sm">{template.name}</Text>
+                          <Text size="xs" c="dimmed" lineClamp={2}>
+                            {template.description}
+                          </Text>
+                        </Stack>
+                      </Stack>
+                    </Card>
+                  )
+                })}
+              </SimpleGrid>
+            </Box>
+
+            <Divider />
+
+            {/* Section Selection */}
             <Box>
               <Title order={4} mb="md">Select Sections to Customize:</Title>
               <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
@@ -304,9 +419,14 @@ export default function ResumeCustomization({ job, onClose }: Props) {
             <Alert icon={<IconCheck size={16} />} color="green" variant="light">
               <Group justify="space-between">
                 <Text fw={500}>Resume customized successfully!</Text>
-                <Badge color="green" variant="filled">
-                  {selectedSections.length} sections updated
-                </Badge>
+                <Group gap="sm">
+                  <Badge color="green" variant="filled">
+                    {selectedSections.length} sections updated
+                  </Badge>
+                  <Badge color="violet" variant="light">
+                    {templates[selectedTemplate]?.name || 'Template'} style
+                  </Badge>
+                </Group>
               </Group>
             </Alert>
 
